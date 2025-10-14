@@ -1,0 +1,29 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<div class="module">
+    <h2>Confirm Nominal Roll Reset</h2>
+    <div class="form-row">
+        <p>You are about to delete:</p>
+        <ul>
+            <li><strong>{{ staff_count }} staff records</strong></li>
+            <li><strong>{{ upload_count }} upload history records</strong></li>
+        </ul>
+        <p>This action cannot be undone.</p>
+    </div>
+    
+    <form method="post" action="{% url 'admin:staff_reset_execute' %}">
+        {% csrf_token %}
+        <div class="form-row">
+            <label>
+                <input type="checkbox" name="keep_structure" checked>
+                Keep organizational structure (directorates, divisions, departments)
+            </label>
+        </div>
+        <div class="submit-row">
+            <input type="submit" value="CONFIRM DELETE" class="deletelink" style="background-color: #ba2121;">
+            <a href="{% url 'admin:training_staff_changelist' %}" class="button cancel-link">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

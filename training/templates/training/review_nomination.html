@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        {% if nomination.status == 'submitted' %}
+        Edit & Review Nomination List
+        {% else %}
+        Review Nomination List
+        {% endif %}
+    </h1>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>{{ nomination.training.title }}</h5>
+                <p class="mb-0">
+                    <strong>Status:</strong> 
+                    <span class="badge 
+                        {% if nomination.status == 'draft' %}bg-secondary
+                        {% elif nomination.status == 'submitted' %}bg-warning
+                        {% elif nomination.status == 'approved' %}bg-success
+                        {% else %}bg-danger{% endif %}">
+                        {{ nomination.status|title }}
+                    </span>
+                    <strong>Criteria Applied:</strong>
+                    Grade Levels: {{ nomination.criteria.grade_levels|join:", " }},
+                    Max Previous Trainings: {{ nomination.criteria.max_previous_trainings }},
+                    Service Years: {{ nomination.criteria.min_years_of_service }}-{{ nomination.criteria.max_years_of_service }}
+                </p>
+            </div>
+            <div class="card-body">
+                <!-- Add Staff Section -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0">Add Staff to Nomination</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <input type="text" class="form-control" id="staff-search" placeholder="Search by Personal Number or Name...">
+                                <div id="search-results" class="mt-2" style="max-height: 200px; overflow-y: auto; display: none;">
+                                    <!-- Search results will appear here -->
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <button type="button" id="add-staff-btn" class="btn btn-success w-100" disabled>
+                                    Add Selected Staff
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Nominated Staff Table -->
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Staff ID</th>
+                                <th>Name</th>
+                                <th>Grade Level</th>
+                                <th>Directorate</th>
+                                <th>Division</th>
+                                <th>Department</th>
+                                <th>Location</th>
+                                <th>Previous Trainings</th>
+                                <th>Years of Service</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="nominated-staff-body">
+                            {% for item in nomination.nominationitem_set.all %}
+                            <tr id="staff-row-{{ item.staff.id }}">
+                                <td>{{ item.staff.staff_id }}</td>
+                                <td>{{ item.staff.first_name }} {{ item.staff.last_name }}</td>
+                                <td>{{ item.staff.get_grade_level_display }}</td>
+                                <td>{{ item.staff.directorate }}</td>
+                                <td>{{ item.staff.division }}</td>
+                                <td>{{ item.staff.department }}</td>
+                                <td>{{ item.staff.get_location_display }}</td>
+                                <td>{{ item.staff.training_count }}</td>
+                                <td>{{ item.staff.years_of_service }}</td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-danger remove-staff" 
+                                            data-staff-id="{{ item.staff.id }}"
+                                            data-staff-name="{{ item.staff.first_name }} {{ item.staff.last_name }}">
+                                        Remove
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-4">
+                    <form method="post" id="nomination-form">
+                        {% csrf_token %}
+                        
+                        {% if nomination.status == 'draft' %}
+                        <button type="submit" name="submit_approval" class="btn btn-success">Submit for Approval</button>
+                        <a href="{% url 'dashboard' %}" class="btn btn-secondary">Save as Draft</a>
+                        {% else %}
+                        <button type="submit" name="submit_approval" class="btn btn-success">Update Submission</button>
+                        <a href="{% url 'dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+<!-- Keep the same JavaScript section as before -->
+{% block extra_scripts %}
+<script>
+// ... (same JavaScript code as before) ...
+</script>
+{% endblock %}

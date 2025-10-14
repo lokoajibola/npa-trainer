@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Pending Approvals</h1>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Training Program</th>
+                                <th>Created By</th>
+                                <th>Created Date</th>
+                                <th>Staff Count</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for nomination in nominations %}
+                            <tr>
+                                <td>{{ nomination.training.title }}</td>
+                                <td>{{ nomination.created_by.get_full_name|default:nomination.created_by.username }}</td>
+                                <td>{{ nomination.created_at|date:"M d, Y" }}</td>
+                                <td>{{ nomination.selected_staff.count }}</td>
+                                <td>
+                                    <a href="{% url 'admin_review_nomination' nomination.id %}" class="btn btn-sm btn-primary">Review & Edit</a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center">No pending approvals</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

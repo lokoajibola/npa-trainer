@@ -1,0 +1,177 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Upload Nominal Roll</h1>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5>Upload Excel File</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.excel_file.id_for_label }}" class="form-label">{{ form.excel_file.label }}</label>
+                        {{ form.excel_file }}
+                        {% if form.excel_file.help_text %}
+                        <div class="form-text">{{ form.excel_file.help_text }}</div>
+                        {% endif %}
+                        {% if form.excel_file.errors %}
+                        <div class="text-danger">
+                            {% for error in form.excel_file.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Upload and Process</button>
+                    <a href="{% url 'dashboard' %}" class="btn btn-secondary">Cancel</a>
+                </form>
+            </div>
+        </div>
+        <!-- Add this button near the upload form -->
+<div class="card mt-4">
+    <div class="card-header bg-light">
+        <h6 class="mb-0">Data Management</h6>
+    </div>
+    <div class="card-body">
+        <p>Need to start fresh? Delete all existing data and upload a new nominal roll.</p>
+        <a href="{% url 'reset_nominal_roll' %}" class="btn btn-outline-danger">
+            Reset All Nominal Roll Data
+        </a>
+    </div>
+</div>
+
+        <!-- Add this to templates/training/upload_nominal_roll.html -->
+<div class="alert alert-info">
+    <h6>Excel File Requirements:</h6>
+    <ul class="mb-0">
+        <li><strong>Column names must match exactly:</strong> Personal Number, Name, GL Range, Directorate, Division, Department, Location, Years of Service Left</li>
+        <li><strong>GL Range format:</strong> GL04, GL06, GL07, GL08, GL09, GL10, GL12, GL13, GL14, GL15, GL16</li>
+        <li><strong>Location values:</strong> LPC, TCIPC, RP, CAL, HQ, DP, ONNE, ABJ</li>
+        <li><strong>Years of Service Left:</strong> Number between 0-35</li>
+        <li>First row must be headers</li>
+    </ul>
+</div>
+
+        <!-- Upload History -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5>Upload History</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Uploaded By</th>
+                                <th>File</th>
+                                <th>Records</th>
+                                <th>Created</th>
+                                <th>Updated</th>
+                                <th>Errors</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for upload in upload_history %}
+                            <tr>
+                                <td>{{ upload.uploaded_at|date:"M d, Y H:i" }}</td>
+                                <td>{{ upload.uploaded_by.username }}</td>
+                                <td>{{ upload.file_name|truncatechars:20 }}</td>
+                                <td>{{ upload.records_processed }}</td>
+                                <td><span class="badge bg-success">{{ upload.created_count }}</span></td>
+                                <td><span class="badge bg-warning">{{ upload.updated_count }}</span></td>
+                                <td>
+                                    {% if upload.error_count > 0 %}
+                                    <span class="badge bg-danger">{{ upload.error_count }}</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ upload.error_count }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center">No upload history</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6>Instructions</h6>
+            </div>
+            <div class="card-body">
+                <h6>Required Excel Format:</h6>
+                <table class="table table-bordered table-sm">
+                    <thead>
+                        <tr>
+                            <th>Column</th>
+                            <th>Format</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Personal Number</td>
+                            <td>Staff ID (A2824, 87397, etc.)</td>
+                        </tr>
+                        <tr>
+                            <td>Name</td>
+                            <td>Full name (Jane Moore)</td>
+                        </tr>
+                        <tr>
+                            <td>GL Range</td>
+                            <td>Grade Level (GL04, GL06, etc.)</td>
+                        </tr>
+                        <tr>
+                            <td>Directorate</td>
+                            <td>Directorate name</td>
+                        </tr>
+                        <tr>
+                            <td>Division</td>
+                            <td>Division name</td>
+                        </tr>
+                        <tr>
+                            <td>Department</td>
+                            <td>Department name</td>
+                        </tr>
+                        <tr>
+                            <td>Location</td>
+                            <td>LPC, TCIPC, RP, CAL, HQ, DP, ONNE, ABJ</td>
+                        </tr>
+                        <tr>
+                            <td>Years of Service Left</td>
+                            <td>Number (0-35)</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <div class="alert alert-info">
+                    <small>
+                        <strong>Note:</strong> 
+                        <ul class="mb-0">
+                            <li>File will replace existing staff data</li>
+                            <li>Training counts will be reset to 0</li>
+                            <li>Only .xlsx and .xls files supported</li>
+                            <li>Max file size: 10MB</li>
+                        </ul>
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

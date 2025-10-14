@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Print Nomination - {{ nomination.training.title }}</title>
+    <style>
+        @media print {
+            .no-print { display: none; }
+            .watermark {
+                position: fixed;
+                opacity: 0.1;
+                font-size: 80px;
+                transform: rotate(-45deg);
+                top: 40%;
+                left: 10%;
+                z-index: -1;
+                color: #ccc;
+                font-family: Verdana, sans-serif;
+            }
+            .security-features {
+                border-top: 2px dashed #333;
+                margin-top: 20px;
+                padding-top: 10px;
+                font-size: 10px;
+                font-family: Verdana, sans-serif;
+            }
+        }
+        body { 
+            font-family: Verdana, sans-serif; 
+            margin: 20px;
+        }
+        .header { 
+            text-align: center; 
+            margin-bottom: 30px; 
+            border-bottom: 3px double #000; 
+            padding-bottom: 15px;
+        }
+        .organization-name {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .department-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .document-type {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        .training-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .document-details {
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+        .table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            font-size: 11px;
+            margin-top: 20px;
+        }
+        .table th, .table td { 
+            border: 1px solid #000; 
+            padding: 6px; 
+            text-align: left; 
+        }
+        .table th { 
+            background-color: #f2f2f2; 
+            font-weight: bold;
+        }
+        .signature-section { 
+            margin-top: 50px; 
+        }
+        .signature-line { 
+            border-top: 1px solid #000; 
+            width: 250px; 
+            margin-top: 40px; 
+        }
+        .security-info { 
+            background-color: #f8f9fa; 
+            padding: 10px; 
+            border: 1px solid #dee2e6; 
+            margin-bottom: 20px; 
+            font-family: Verdana, sans-serif;
+        }
+        .tamper-warning { 
+            background-color: #f8d7da; 
+            color: #721c24; 
+            padding: 10px; 
+            border: 1px solid #f5c6cb; 
+            margin-bottom: 20px; 
+            font-family: Verdana, sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <!-- Security Watermark -->
+    <div class="watermark">
+        NPA OFFICIAL DOCUMENT
+    </div>
+
+    <div class="no-print" style="margin-bottom: 20px;">
+        <button onclick="window.print()" class="btn btn-primary">Print</button>
+        <button onclick="window.history.back()" class="btn btn-secondary">Back</button>
+        {% if is_tampered %}
+        <div class="alert alert-danger mt-2">
+            <strong>Security Warning:</strong> This document may have been modified after approval.
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Security Information -->
+    <div class="security-info no-print">
+        <strong>Document Security:</strong>
+        <ul class="mb-0">
+            <li>Document ID: {{ nomination.id }}</li>
+            <li>Print Date: {% now "F d, Y H:i" %}</li>
+            <li>Printed By: {{ request.user.get_full_name|default:request.user.username }}</li>
+            <li>Security Hash: {{ nomination.print_hash|slice:":16" }}...</li>
+            {% if is_tampered %}
+            <li><strong style="color: red;">INTEGRITY CHECK FAILED</strong></li>
+            {% else %}
+            <li style="color: green;">✓ Document integrity verified</li>
+            {% endif %}
+        </ul>
+    </div>
+
+    {% if is_tampered %}
+    <div class="tamper-warning">
+        <strong>⚠️ SECURITY ALERT:</strong> This nomination list appears to have been modified after official approval. 
+        This document should not be considered valid. Please contact the Training Department immediately.
+    </div>
+    {% endif %}
+
+    <!-- Official Header -->
+    <div class="header">
+        <div class="organization-name">NIGERIAN PORTS AUTHORITY</div>
+        <div class="department-name">TRAINING AND MANPOWER DEV. DEPARTMENT</div>
+        <div class="document-type">INTERNAL MEMORANDUM</div>
+        
+        <div class="training-title">
+            TRAINING PROGRAM: {{ nomination.training.title }}
+        </div>
+        
+        <div class="document-details">
+            <strong>Reference No:</strong> NPA/TMD/TN/{{ nomination.id }}/{% now "Y" %} | 
+            <strong>Date:</strong> {{ nomination.approved_at|date:"F d, Y" }}
+        </div>
+        <div class="document-details">
+            <strong>Venue:</strong> {{ nomination.training.venue }} | 
+            <strong>Duration:</strong> {{ nomination.training.start_date|date:"M d, Y" }} - {{ nomination.training.end_date|date:"M d, Y" }}
+        </div>
+    </div>
+
+    <!-- Nomination List Table (Sorted by GL) -->
+    <table class="table">
+        <thead>
+            <tr>
+                <th width="5%">S/N</th>
+                <th width="25%">NAME</th>
+                <th width="15%">PERSONAL NO.</th>
+                <th width="30%">DEPARTMENT</th>
+                <th width="25%">LOCATION</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in sorted_items %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ item.staff.first_name }} {{ item.staff.last_name }}</td>
+                <td>{{ item.staff.staff_id }}</td>
+                <td>
+                    {% if item.staff.department %}
+                        {{ item.staff.department }}
+                    {% else %}
+                        {{ item.staff.division }}
+                    {% endif %}
+                </td>
+                <td>{{ item.staff.get_location_display }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Total Count -->
+    <div style="margin-top: 10px; font-weight: bold; font-size: 12px;">
+        TOTAL NOMINEES: {{ nomination.selected_staff.count }}
+    </div>
+
+    <!-- Signature Section -->
+    <div class="signature-section">
+        <div style="float: left; width: 45%;">
+            <p style="margin-bottom: 5px;"><strong>Prepared by:</strong></p>
+            <div class="signature-line"></div>
+            <p style="margin-top: 5px; margin-bottom: 2px;">
+                {{ nomination.created_by.get_full_name|default:nomination.created_by.username }}
+            </p>
+            <p style="margin: 0; font-size: 11px;">Training Officer</p>
+            <p style="margin: 0; font-size: 11px;">Training and Manpower Dev. Department</p>
+            <p style="margin: 0; font-size: 11px;">Date: {{ nomination.created_at|date:"M d, Y" }}</p>
+        </div>
+        
+        <div style="float: right; width: 45%;">
+            <p style="margin-bottom: 5px;"><strong>Approved by:</strong></p>
+            <div class="signature-line"></div>
+            <p style="margin-top: 5px; margin-bottom: 2px;">
+                {{ nomination.approved_by.get_full_name|default:nomination.approved_by.username }}
+            </p>
+            <p style="margin: 0; font-size: 11px;">Head of Department</p>
+            <p style="margin: 0; font-size: 11px;">Training and Manpower Dev. Department</p>
+            <p style="margin: 0; font-size: 11px;">Date: {{ nomination.approved_at|date:"M d, Y" }}</p>
+        </div>
+        <div style="clear: both;"></div>
+    </div>
+
+    <!-- Distribution List -->
+    <div style="margin-top: 40px; font-size: 11px;">
+        <p><strong>Distribution:</strong></p>
+        <ul style="margin: 0; padding-left: 20px;">
+            <li>Head, Training and Manpower Dev. Department</li>
+            <li>All Nominated Staff</li>
+            <li>Human Resources Department</li>
+            <li>Directorates Concerned</li>
+            <li>File</li>
+        </ul>
+    </div>
+
+    <!-- Security Footer -->
+    <div class="security-features">
+        <p style="margin: 0;">
+            <strong>SECURITY FEATURES:</strong> 
+            Document ID: NPA/TMD/TN/{{ nomination.id }}/{% now "Y" %} | 
+            Digital Signature: {{ nomination.print_hash|slice:":12" }}... | 
+            Printed: {% now "Y-m-d H:i" %} | 
+            Page 1 of 1
+        </p>
+        <p style="font-size: 8px; color: #666; margin: 5px 0 0 0;">
+            This is an official NPA document. Unauthorized reproduction or modification is strictly prohibited. 
+            Verify authenticity with Training and Manpower Development Department. 
+            Security Hash: {{ nomination.print_hash }}
+        </p>
+    </div>
+</body>
+</html>

@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Reset Nominal Roll</h1>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-warning">
+                <h5 class="mb-0">⚠️ Confirm Data Reset</h5>
+            </div>
+            <div class="card-body">
+                {% if protected_staff_count > 0 %}
+                <div class="alert alert-info">
+                    <h6>📋 Staff Protection Notice</h6>
+                    <p class="mb-0">
+                        <strong>{{ protected_staff_count }} staff members</strong> are part of approved training programs 
+                        and will be preserved to maintain training history integrity.
+                    </p>
+                </div>
+                {% endif %}
+
+                <div class="alert alert-danger">
+                    <h6>This action will permanently delete:</h6>
+                    <ul>
+                        <li><strong>{{ staff_to_delete_count }} staff records</strong> (out of {{ all_staff_count }} total)</li>
+                        <li><strong>{{ upload_count }} upload history records</strong></li>
+                    </ul>
+                    <p class="mb-0"><strong>This action cannot be undone!</strong></p>
+                </div>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="keep_structure" id="keep_structure" checked>
+                            <label class="form-check-label" for="keep_structure">
+                                Keep organizational structure (Directorates, Divisions, Departments)
+                            </label>
+                        </div>
+                        <small class="form-text text-muted">
+                            If unchecked, will also delete {{ dir_count }} directorates, {{ div_count }} divisions, and {{ dept_count }} departments.
+                        </small>
+                    </div>
+
+                    {% if protected_staff_count > 0 %}
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="force_all" id="force_all">
+                            <label class="form-check-label text-danger" for="force_all">
+                                <strong>Force delete ALL staff (including {{ protected_staff_count }} in approved trainings)</strong>
+                            </label>
+                        </div>
+                        <small class="form-text text-muted">
+                            ⚠️ Warning: This will remove staff from approved training histories and may cause data inconsistency.
+                        </small>
+                    </div>
+                    {% endif %}
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{% url 'upload_nominal_roll' %}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-danger" onclick="return confirm('Are you absolutely sure? This cannot be undone.')">
+                            CONFIRM RESET
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

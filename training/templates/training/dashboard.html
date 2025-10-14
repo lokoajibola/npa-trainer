@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Dashboard</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        {% if user_profile.role == 'training_staff' or user_profile.role == 'admin_officer' or user_profile.role == 'admin' %}
+        <a href="{% url 'create_training' %}" class="btn btn-primary me-2">Create New Training</a>
+        {% endif %}
+        <a href="{% url 'search_staff_trainings' %}" class="btn btn-outline-primary">Search Staff Training History</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card">
+            <div class="card-body">
+                <h5 class="card-title">{{ nominations.count }}</h5>
+                <p class="card-text">Total Nominations</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card">
+            <div class="card-body">
+                <h5 class="card-title">{{ nominations|length }}</h5>
+                <p class="card-text">My Nominations</p>
+            </div>
+        </div>
+    </div>
+    {% if user_profile.role == 'admin' or user_profile.role == 'admin_officer' %}
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card">
+            <div class="card-body">
+                <h5 class="card-title">{{ pending_approvals }}</h5>
+                <p class="card-text">Pending Approvals</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <h3>Recent Nominations</h3>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Training Program</th>
+                        <th>Status</th>
+                        <th>Created Date</th>
+                        <th>Staff Count</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for nomination in nominations %}
+                    <tr>
+                        <td>{{ nomination.training.title }}</td>
+                        <td>
+                            <span class="badge 
+                                {% if nomination.status == 'draft' %}bg-secondary
+                                {% elif nomination.status == 'submitted' %}bg-warning
+                                {% elif nomination.status == 'approved' %}bg-success
+                                {% else %}bg-danger{% endif %}">
+                                {{ nomination.status|title }}
+                            </span>
+                        </td>
+                        <td>{{ nomination.created_at|date:"M d, Y" }}</td>
+                        <td>{{ nomination.selected_staff.count }}</td>
+                        <td>
+                            {% if nomination.status == 'approved' %}
+                            <a href="{% url 'print_nomination' nomination.id %}" class="btn btn-sm btn-outline-primary">Print</a>
+                            {% elif user_profile.role == 'admin' or user_profile.role == 'admin_officer' %}
+                                {% if nomination.status == 'submitted' %}
+                                <a href="{% url 'admin_review_nomination' nomination.id %}" class="btn btn-sm btn-primary">Review & Edit</a>
+                                {% endif %}
+                            {% else %}
+                                {% if nomination.status == 'draft' or nomination.status == 'submitted' %}
+                                <a href="{% url 'review_nomination' nomination.id %}" class="btn btn-sm btn-primary">
+                                    {% if nomination.status == 'submitted' %}Edit & {% endif %}Review
+                                </a>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center">No nominations found</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

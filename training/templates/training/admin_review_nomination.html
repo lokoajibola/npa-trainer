@@ -1,0 +1,326 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Review Nomination List (Admin)</h1>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>{{ nomination.training.title }}</h5>
+                <p class="mb-0">
+                    <strong>Created by:</strong> {{ nomination.created_by.get_full_name|default:nomination.created_by.username }}
+                    <strong>Criteria Applied:</strong>
+                    Grade Levels: {{ nomination.criteria.grade_levels|join:", " }},
+                    Max Previous Trainings: {{ nomination.criteria.max_previous_trainings }},
+                    Service Years: {{ nomination.criteria.min_years_of_service }}-{{ nomination.criteria.max_years_of_service }}
+                </p>
+            </div>
+            <div class="card-body">
+                <!-- Add Staff Section -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0">Add Staff to Nomination</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <input type="text" class="form-control" id="staff-search" placeholder="Search by Personal Number or Name...">
+                                <div id="search-results" class="mt-2" style="max-height: 200px; overflow-y: auto; display: none;">
+                                    <!-- Search results will appear here -->
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <button type="button" id="add-staff-btn" class="btn btn-success w-100" disabled>
+                                    Add Selected Staff
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Nominated Staff Table -->
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Staff ID</th>
+                                <th>Name</th>
+                                <th>Grade Level</th>
+                                <th>Directorate</th>
+                                <th>Division</th>
+                                <th>Department</th>
+                                <th>Location</th>
+                                <th>Previous Trainings</th>
+                                <th>Years of Service</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="nominated-staff-body">
+                            {% for item in nomination.nominationitem_set.all %}
+                            <tr id="staff-row-{{ item.staff.id }}">
+                                <td>{{ item.staff.staff_id }}</td>
+                                <td>{{ item.staff.first_name }} {{ item.staff.last_name }}</td>
+                                <td>{{ item.staff.get_grade_level_display }}</td>
+                                <td>{{ item.staff.directorate }}</td>
+                                <td>{{ item.staff.division }}</td>
+                                <td>{{ item.staff.department }}</td>
+                                <td>{{ item.staff.get_location_display }}</td>
+                                <td>{{ item.staff.training_count }}</td>
+                                <td>{{ item.staff.years_of_service }}</td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-danger remove-staff" 
+                                            data-staff-id="{{ item.staff.id }}"
+                                            data-staff-name="{{ item.staff.first_name }} {{ item.staff.last_name }}">
+                                        Remove
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <<!-- In the form section, replace the current buttons with this -->
+<div class="mt-4">
+    <form method="post" id="nomination-form">
+        {% csrf_token %}
+        <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+            <button type="submit" name="approve" class="btn btn-success me-2">Approve Nomination</button>
+            <button type="submit" name="reject" class="btn btn-danger me-2">Reject Nomination</button>
+            <a href="{% url 'approval_list' %}" class="btn btn-secondary">Back to Approvals</a>
+            <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">Dashboard</a>
+        </div>
+    </form>
+</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Same JavaScript as in review_nomination.html for adding/removing staff
+document.addEventListener('DOMContentLoaded', function() {
+    let selectedStaffId = null;
+    const staffSearch = document.getElementById('staff-search');
+    const searchResults = document.getElementById('search-results');
+    const addStaffBtn = document.getElementById('add-staff-btn');
+    const nominatedStaffBody = document.getElementById('nominated-staff-body');
+    const nominationForm = document.getElementById('nomination-form');
+
+    // Staff Search Functionality
+    staffSearch.addEventListener('input', function() {
+        const searchTerm = this.value.trim();
+        
+        if (searchTerm.length < 2) {
+            searchResults.style.display = 'none';
+            selectedStaffId = null;
+            addStaffBtn.disabled = true;
+            return;
+        }
+
+        fetch(`/api/search-staff/?q=${encodeURIComponent(searchTerm)}&nomination_id={{ nomination.id }}`)
+            .then(response => response.json())
+            .then(data => {
+                displaySearchResults(data.staff);
+            })
+            .catch(error => {
+                console.error('Error searching staff:', error);
+            });
+    });
+
+    // Display search results
+    function displaySearchResults(staffList) {
+        searchResults.innerHTML = '';
+        
+        if (staffList.length === 0) {
+            searchResults.innerHTML = '<div class="text-muted p-2">No staff found matching your search</div>';
+            searchResults.style.display = 'block';
+            selectedStaffId = null;
+            addStaffBtn.disabled = true;
+            return;
+        }
+
+        staffList.forEach(staff => {
+            const staffItem = document.createElement('div');
+            staffItem.className = 'search-result-item p-2 border-bottom';
+            staffItem.style.cursor = 'pointer';
+            staffItem.innerHTML = `
+                <strong>${staff.staff_id}</strong> - ${staff.first_name} ${staff.last_name}
+                <br>
+                <small class="text-muted">
+                    ${staff.grade_level} | ${staff.directorate} | ${staff.location}
+                </small>
+            `;
+            
+            staffItem.addEventListener('click', function() {
+                document.querySelectorAll('.search-result-item').forEach(item => {
+                    item.style.backgroundColor = '';
+                });
+                this.style.backgroundColor = '#e9ecef';
+                selectedStaffId = staff.id;
+                addStaffBtn.disabled = false;
+            });
+            
+            searchResults.appendChild(staffItem);
+        });
+        
+        searchResults.style.display = 'block';
+    }
+
+    // Add staff to nomination
+    addStaffBtn.addEventListener('click', function() {
+        if (!selectedStaffId) return;
+
+        fetch('/api/add-staff-to-nomination/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                staff_id: selectedStaffId,
+                nomination_id: {{ nomination.id }}
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const staff = data.staff;
+                const newRow = document.createElement('tr');
+                newRow.id = `staff-row-${staff.id}`;
+                newRow.innerHTML = `
+                    <td>${staff.staff_id}</td>
+                    <td>${staff.first_name} ${staff.last_name}</td>
+                    <td>${staff.grade_level_display}</td>
+                    <td>${staff.directorate}</td>
+                    <td>${staff.division}</td>
+                    <td>${staff.department}</td>
+                    <td>${staff.location_display}</td>
+                    <td>${staff.training_count}</td>
+                    <td>${staff.years_of_service}</td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-danger remove-staff" 
+                                data-staff-id="${staff.id}"
+                                data-staff-name="${staff.first_name} ${staff.last_name}">
+                            Remove
+                        </button>
+                    </td>
+                `;
+                nominatedStaffBody.appendChild(newRow);
+                
+                staffSearch.value = '';
+                searchResults.style.display = 'none';
+                selectedStaffId = null;
+                addStaffBtn.disabled = true;
+                
+                newRow.querySelector('.remove-staff').addEventListener('click', removeStaffHandler);
+                
+                showAlert('Staff added successfully!', 'success');
+            } else {
+                showAlert(data.error || 'Error adding staff', 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error adding staff:', error);
+            showAlert('Error adding staff', 'danger');
+        });
+    });
+
+    // Remove staff from nomination
+    function removeStaffHandler(event) {
+        const staffId = this.getAttribute('data-staff-id');
+        const staffName = this.getAttribute('data-staff-name');
+        
+        if (!confirm(`Are you sure you want to remove ${staffName} from the nomination?`)) {
+            return;
+        }
+
+        fetch('/api/remove-staff-from-nomination/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                staff_id: staffId,
+                nomination_id: {{ nomination.id }}
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const row = document.getElementById(`staff-row-${staffId}`);
+                if (row) {
+                    row.remove();
+                }
+                showAlert('Staff removed successfully!', 'success');
+            } else {
+                showAlert(data.error || 'Error removing staff', 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error removing staff:', error);
+            showAlert('Error removing staff', 'danger');
+        });
+    }
+
+    // Add event listeners to existing remove buttons
+    document.querySelectorAll('.remove-staff').forEach(button => {
+        button.addEventListener('click', removeStaffHandler);
+    });
+
+    // Utility functions
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function showAlert(message, type) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.querySelector('.card-body').insertBefore(alertDiv, document.querySelector('.card-body').firstChild);
+        
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 3000);
+    }
+
+    document.addEventListener('click', function(event) {
+        if (!staffSearch.contains(event.target) && !searchResults.contains(event.target)) {
+            searchResults.style.display = 'none';
+        }
+    });
+});
+</script>
+
+<style>
+.search-result-item:hover {
+    background-color: #f8f9fa !important;
+}
+
+.search-result-item {
+    transition: background-color 0.2s;
+}
+</style>
+{% endblock %}

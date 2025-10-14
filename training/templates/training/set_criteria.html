@@ -1,0 +1,267 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Set Selection Criteria</h1>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Training: {{ training.title }}</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" id="criteria-form">
+                    {% csrf_token %}
+                    
+                    <!-- Grade Level Range -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label for="{{ form.grade_level_from.id_for_label }}" class="form-label">{{ form.grade_level_from.label }}</label>
+                            <select name="grade_level_from" class="form-select" id="{{ form.grade_level_from.id_for_label }}">
+                                <option value="">Select Grade Level</option>
+                                {% for value, label in form.grade_level_from.field.choices %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.grade_level_to.id_for_label }}" class="form-label">{{ form.grade_level_to.label }}</label>
+                            <select name="grade_level_to" class="form-select" id="{{ form.grade_level_to.id_for_label }}">
+                                <option value="">Select Grade Level</option>
+                                {% for value, label in form.grade_level_to.field.choices %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Locations -->
+                    <div class="mb-4">
+                        <h5>Locations</h5>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="select_all_locations">
+                            <label class="form-check-label fw-bold" for="select_all_locations">Select All Locations</label>
+                        </div>
+                        <div class="row">
+                            {% for value, label in form.locations.field.choices %}
+                            <div class="col-md-6 col-lg-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="locations" value="{{ value }}" id="loc_{{ value }}" 
+                                           {% if value == 'ALL' %}checked{% endif %}>
+                                    <label class="form-check-label" for="loc_{{ value }}">
+                                        {{ label }}
+                                    </label>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Directorates -->
+                    <div class="mb-4">
+                        <h5>Directorates</h5>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="select_all_directorates">
+                            <label class="form-check-label fw-bold" for="select_all_directorates">Select All Directorates</label>
+                        </div>
+                        <div class="row">
+                            {% for checkbox in form.directorates %}
+                            <div class="col-md-6 col-lg-4">
+                                <div class="form-check">
+                                    {{ checkbox.tag }}
+                                    <label class="form-check-label" for="{{ checkbox.id_for_label }}">
+                                        {{ checkbox.choice_label }}
+                                    </label>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Divisions -->
+                    <div class="mb-4">
+                        <h5>Divisions</h5>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="select_all_divisions">
+                            <label class="form-check-label fw-bold" for="select_all_divisions">Select All Divisions</label>
+                        </div>
+                        <div class="row">
+                            {% for checkbox in form.divisions %}
+                            <div class="col-md-6 col-lg-4">
+                                <div class="form-check">
+                                    {{ checkbox.tag }}
+                                    <label class="form-check-label" for="{{ checkbox.id_for_label }}">
+                                        {{ checkbox.choice_label }}
+                                    </label>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Departments -->
+                    <div class="mb-4">
+                        <h5>Departments</h5>
+                        <div class="mb-3">
+                            <input type="text" class="form-control" id="department-search" placeholder="Search departments...">
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="select_all_departments">
+                            <label class="form-check-label fw-bold" for="select_all_departments">Select All Departments</label>
+                        </div>
+                        <div class="row" id="departments-container">
+                            {% for checkbox in form.departments %}
+                            <div class="col-md-6 col-lg-4 department-item">
+                                <div class="form-check">
+                                    {{ checkbox.tag }}
+                                    <label class="form-check-label" for="{{ checkbox.id_for_label }}">
+                                        {{ checkbox.choice_label }}
+                                    </label>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Other Criteria -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label for="{{ form.max_previous_trainings.id_for_label }}" class="form-label">Maximum Previous Trainings</label>
+                            {{ form.max_previous_trainings }}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.max_years_service_left.id_for_label }}" class="form-label">Maximum Years of Service Left</label>
+                            {{ form.max_years_service_left }}
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary">Generate Nomination List</button>
+                        <a href="{% url 'dashboard' %}" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Simple Department Search
+    const departmentSearch = document.getElementById('department-search');
+    const departmentItems = document.querySelectorAll('.department-item');
+    
+    if (departmentSearch && departmentItems.length > 0) {
+        departmentSearch.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase().trim();
+            
+            departmentItems.forEach(item => {
+                const label = item.querySelector('.form-check-label');
+                if (label) {
+                    const departmentName = label.textContent.toLowerCase();
+                    if (departmentName.includes(searchTerm)) {
+                        item.style.display = 'block';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                }
+            });
+        });
+    }
+
+    // Select All Locations
+    const selectAllLocations = document.getElementById('select_all_locations');
+    const locationCheckboxes = document.querySelectorAll('input[name="locations"]');
+    
+    if (selectAllLocations) {
+        selectAllLocations.addEventListener('change', function() {
+            locationCheckboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+        });
+    }
+
+    // Select All Directorates
+    const selectAllDirectorates = document.getElementById('select_all_directorates');
+    const directorateCheckboxes = document.querySelectorAll('input[name="directorates"]');
+    
+    if (selectAllDirectorates) {
+        selectAllDirectorates.addEventListener('change', function() {
+            directorateCheckboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+        });
+    }
+
+    // Select All Divisions
+    const selectAllDivisions = document.getElementById('select_all_divisions');
+    const divisionCheckboxes = document.querySelectorAll('input[name="divisions"]');
+    
+    if (selectAllDivisions) {
+        selectAllDivisions.addEventListener('change', function() {
+            divisionCheckboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+        });
+    }
+
+    // Select All Departments
+    const selectAllDepartments = document.getElementById('select_all_departments');
+    const departmentCheckboxes = document.querySelectorAll('input[name="departments"]');
+    
+    if (selectAllDepartments) {
+        selectAllDepartments.addEventListener('change', function() {
+            // Only check visible departments
+            departmentCheckboxes.forEach(checkbox => {
+                const item = checkbox.closest('.department-item');
+                if (item && item.style.display !== 'none') {
+                    checkbox.checked = this.checked;
+                }
+            });
+        });
+    }
+
+    // Show all departments initially (in case some were hidden)
+    departmentItems.forEach(item => {
+        item.style.display = 'block';
+    });
+
+    // Handle 'ALL' location selection
+    const allLocationCheckbox = document.getElementById('loc_ALL');
+    if (allLocationCheckbox) {
+        allLocationCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                // If 'ALL' is checked, uncheck other locations
+                locationCheckboxes.forEach(checkbox => {
+                    if (checkbox !== allLocationCheckbox) {
+                        checkbox.checked = false;
+                    }
+                });
+            }
+        });
+
+        // If any other location is checked, uncheck 'ALL'
+        locationCheckboxes.forEach(checkbox => {
+            if (checkbox !== allLocationCheckbox) {
+                checkbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        allLocationCheckbox.checked = false;
+                    }
+                });
+            }
+        });
+    }
+});
+</script>
+
+<style>
+.department-item {
+    display: block;
+}
+</style>
+{% endblock %}
