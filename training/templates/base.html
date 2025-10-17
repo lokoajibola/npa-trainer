@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -22,25 +23,35 @@
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="{% url 'dashboard' %}">NPA Training Scheduler</a>
-            <div class="navbar-nav ms-auto">
-                <span class="navbar-text me-3">
-                    Welcome, {{ user.username }}
-                    {% if user_profile %}
-                    ({{ user_profile.get_role_display }})
-                    {% endif %}
-                </span>
-                <form method="post" action="{% url 'logout' %}" class="logout-form">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-link nav-link" style="border: none; background: none; color: rgba(255,255,255,.55); padding: 0.5rem 0;">
-                        Logout
-                    </button>
-                </form>
-            </div>
+    <nav class="navbar navbar-expand-lg navbar-dark" style="background-color: #ffc107;">
+    <div class="container">
+        <a class="navbar-brand" href="{% url 'dashboard' %}" style="color: #198754 !important; font-weight: bold;">
+            {% if user_profile.role == 'training_staff' %}
+                <i class="fas fa-chalkboard-teacher me-2"></i>
+            {% elif user_profile.role == 'admin' %}
+                <i class="fas fa-cog me-2"></i>
+            {% elif user_profile.role == 'admin_officer' %}
+                <i class="fas fa-user-shield me-2"></i>
+            {% endif %}
+            <img src="{% static 'images/npa2.png' %}" alt="NPA Logo" height="30" class="d-inline-block align-text-top me-2">
+            NPA Training AI
+        </a>
+        <div class="navbar-nav ms-auto">
+            <span class="navbar-text me-3" style="color: #000000 !important;">
+                Welcome, {{ user.username }}
+                {% if user_profile %}
+                ({{ user_profile.get_role_display }})
+                {% endif %}
+            </span>
+            <form method="post" action="{% url 'logout' %}" class="logout-form">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-link nav-link" style="border: none; background: none; color: #000000 !important; padding: 0.5rem 0;">
+                    Logout
+                </button>
+            </form>
         </div>
-    </nav>
+    </div>
+</nav>
 
     <div class="container-fluid">
         <div class="row">
