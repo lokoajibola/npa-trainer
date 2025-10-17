@@ -8,22 +8,53 @@ from django.core.exceptions import ValidationError
 class TrainingProgramForm(forms.ModelForm):
     class Meta:
         model = TrainingProgram
-        fields = ['title', 'description', 'start_date', 'end_date', 'venue', 'capacity']
+        fields = [
+            'title', 'training_coordinator', 'training_consultant', 
+            'consultant_info', 'remarks', 'start_date', 'end_date', 
+            'venue', 'capacity'
+        ]
         widgets = {
             'start_date': forms.DateInput(attrs={'type': 'date'}),
             'end_date': forms.DateInput(attrs={'type': 'date'}),
-            'description': forms.Textarea(attrs={'rows': 4}),
+            'consultant_info': forms.Textarea(attrs={'rows': 3}),
+            'remarks': forms.Textarea(attrs={'rows': 2}),
+        }
+        help_texts = {
+            'training_coordinator': 'Select a training officer to coordinate this program',
+            'capacity': 'Maximum number of participants',
         }
     
     def __init__(self, *args, **kwargs):
+        self.request = kwargs.pop('request', None)
         super().__init__(*args, **kwargs)
+        
+        # Limit training_coordinator choices to training staff
+        training_staff_users = User.objects.filter(
+            userprofile__role__in=['training_staff', 'admin_officer', 'admin']
+        )
+        self.fields['training_coordinator'].queryset = training_staff_users
+        
+        # Set submit button text based on whether we're editing or creating
+        if self.instance.pk:
+            submit_text = 'Update Training Program'
+        else:
+            submit_text = 'Create Training Program'
+            self.fields['capacity'].initial = 25
+        
         self.helper = FormHelper()
+        self.helper.form_method = 'post'
         self.helper.layout = Layout(
             Row(
                 Column('title', css_class='form-group col-md-12'),
                 css_class='form-row'
             ),
-            'description',
+            Row(
+                Column('training_coordinator', css_class='form-group col-md-6'),
+                Column('training_consultant', css_class='form-group col-md-6'),
+                css_class='form-row'
+            ),
+            'consultant_info',
+            'remarks',
             Row(
                 Column('start_date', css_class='form-group col-md-6'),
                 Column('end_date', css_class='form-group col-md-6'),
@@ -34,8 +65,9 @@ class TrainingProgramForm(forms.ModelForm):
                 Column('capacity', css_class='form-group col-md-6'),
                 css_class='form-row'
             ),
-            Submit('submit', 'Create Training Program', css_class='btn-primary')
+            Submit('submit', submit_text, css_class='btn-primary')
         )
+
 
 class SelectionCriteriaForm(forms.ModelForm):
     grade_level_from = forms.ChoiceField(

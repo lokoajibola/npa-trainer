@@ -83,8 +83,48 @@
                                 </a>
                                 {% endif %}
                             {% endif %}
+                            
+                            <!-- Delete button for draft trainings -->
+                            {% if nomination.status == 'draft' and nomination.created_by == request.user %}
+                            <button type="button" class="btn btn-sm btn-danger" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#deleteModal{{ nomination.id }}">
+                                Delete
+                            </button>
+                            {% endif %}
                         </td>
                     </tr>
+                    
+                    <!-- Delete Confirmation Modal for each draft nomination -->
+                    {% if nomination.status == 'draft' and nomination.created_by == request.user %}
+                    <div class="modal fade" id="deleteModal{{ nomination.id }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Confirm Delete</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p>Are you sure you want to delete the training <strong>"{{ nomination.training.title }}"</strong>?</p>
+                                    <p class="text-danger"><strong>This action cannot be undone.</strong></p>
+                                    <p>This will delete:</p>
+                                    <ul>
+                                        <li>Training program: {{ nomination.training.title }}</li>
+                                        <li>Selection criteria</li>
+                                        <li>All nominated staff ({{ nomination.selected_staff.count }} staff)</li>
+                                    </ul>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                    <form method="post" action="{% url 'delete_nomination' nomination.id %}" style="display: inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-danger">Delete Training</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
                     {% empty %}
                     <tr>
                         <td colspan="5" class="text-center">No nominations found</td>

@@ -24,34 +24,40 @@ def search_staff(request):
     if not query or len(query) < 2:
         return JsonResponse({'staff': []})
     
-    # Get the nomination to check already nominated staff
-    nomination = get_object_or_404(TrainingNomination, id=nomination_id)
-    nominated_staff_ids = list(nomination.selected_staff.values_list('id', flat=True))
+    try:
+        # Get the nomination to check already nominated staff
+        nomination = get_object_or_404(TrainingNomination, id=nomination_id)
+        nominated_staff_ids = list(nomination.selected_staff.values_list('id', flat=True))
+        
+        # Search in staff database
+        staff_query = Staff.objects.filter(
+            Q(staff_id__icontains=query) |
+            Q(first_name__icontains=query) |
+            Q(last_name__icontains=query)
+        ).exclude(id__in=nominated_staff_ids)  # Exclude already nominated staff
+        
+        staff_list = []
+        for staff in staff_query[:10]:  # Limit to 10 results
+            staff_list.append({
+                'id': staff.id,
+                'staff_id': staff.staff_id,
+                'first_name': staff.first_name,
+                'last_name': staff.last_name,
+                'grade_level': staff.get_grade_level_display(),
+                'directorate': str(staff.directorate),
+                'division': str(staff.division),
+                'department': str(staff.department) if staff.department else '',
+                'location': staff.get_location_display(),
+                'training_count': staff.training_count,
+                'years_of_service': staff.years_of_service(),
+            })
+        
+        return JsonResponse({'staff': staff_list})
     
-    # Search in staff database
-    staff_query = Staff.objects.filter(
-        Q(staff_id__icontains=query) |
-        Q(first_name__icontains=query) |
-        Q(last_name__icontains=query)
-    ).exclude(id__in=nominated_staff_ids)  # Exclude already nominated staff
-    
-    staff_list = []
-    for staff in staff_query[:10]:  # Limit to 10 results
-        staff_list.append({
-            'id': staff.id,
-            'staff_id': staff.staff_id,
-            'first_name': staff.first_name,
-            'last_name': staff.last_name,
-            'grade_level': staff.get_grade_level_display(),
-            'directorate': str(staff.directorate),
-            'division': str(staff.division),
-            'department': str(staff.department) if staff.department else '',
-            'location': staff.get_location_display(),
-            'training_count': staff.training_count,
-            'years_of_service': staff.years_of_service(),
-        })
-    
-    return JsonResponse({'staff': staff_list})
+    except Exception as e:
+        print(f"Search error: {e}")
+        return JsonResponse({'staff': []})
+
 
 @csrf_exempt
 def add_staff_to_nomination(request):
@@ -112,9 +118,11 @@ def add_staff_to_nomination(request):
             })
             
         except Exception as e:
+            print(f"Add staff error: {e}")
             return JsonResponse({'success': False, 'error': str(e)})
     
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
 
 @csrf_exempt
 def remove_staff_from_nomination(request):
@@ -138,7 +146,10 @@ def remove_staff_from_nomination(request):
                 return JsonResponse({'success': False, 'error': 'Cannot modify approved or rejected nominations'})
             
             # Remove staff from nomination
-            NominationItem.objects.filter(nomination=nomination, staff_id=staff_id).delete()
+            deleted_count = NominationItem.objects.filter(nomination=nomination, staff_id=staff_id).delete()[0]
+            
+            if deleted_count == 0:
+                return JsonResponse({'success': False, 'error': 'Staff not found in nomination'})
             
             # LOG THE ACTION
             log_nomination_action(
@@ -152,9 +163,11 @@ def remove_staff_from_nomination(request):
             return JsonResponse({'success': True})
             
         except Exception as e:
+            print(f"Remove staff error: {e}")
             return JsonResponse({'success': False, 'error': str(e)})
     
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
 
 @login_required
 def dashboard(request):
@@ -183,7 +196,7 @@ def dashboard(request):
 @user_passes_test(lambda u: is_training_staff(u) or is_admin_officer(u))
 def create_training_program(request):
     if request.method == 'POST':
-        form = TrainingProgramForm(request.POST)
+        form = TrainingProgramForm(request.POST, request=request)
         if form.is_valid():
             training = form.save(commit=False)
             training.created_by = request.user
@@ -191,9 +204,52 @@ def create_training_program(request):
             messages.success(request, 'Training program created successfully!')
             return redirect('set_selection_criteria', training_id=training.id)
     else:
-        form = TrainingProgramForm()
+        form = TrainingProgramForm(request=request)
+        # Set current user as default training coordinator if they are training staff
+        user_profile = UserProfile.objects.get(user=request.user)
+        if user_profile.role in ['training_staff', 'admin_officer', 'admin']:
+            form.fields['training_coordinator'].initial = request.user
     
     return render(request, 'training/create_training.html', {'form': form})
+
+@login_required
+@user_passes_test(is_training_staff)
+def delete_nomination(request, nomination_id):
+    """Delete a draft nomination and its associated training"""
+    nomination = get_object_or_404(TrainingNomination, id=nomination_id, created_by=request.user)
+    
+    # Only allow deletion of draft nominations
+    if nomination.status != 'draft':
+        messages.error(request, 'Only draft nominations can be deleted.')
+        return redirect('dashboard')
+    
+    if request.method == 'POST':
+        try:
+            # Store information for the success message
+            training_title = nomination.training.title
+            staff_count = nomination.selected_staff.count
+            
+            # Delete the training program (this will cascade to nomination and criteria due to CASCADE delete)
+            nomination.training.delete()
+            
+            # Log the action
+            log_nomination_action(
+                nomination, 
+                request.user, 
+                'deleted', 
+                f'Deleted draft training: {training_title}',
+                request
+            )
+            
+            messages.success(request, f'Successfully deleted training "{training_title}" and its {staff_count} nominated staff.')
+            
+        except Exception as e:
+            messages.error(request, f'Error deleting training: {str(e)}')
+        
+        return redirect('dashboard')
+    
+    # If not POST, redirect to dashboard
+    return redirect('dashboard')
 
 @login_required
 @user_passes_test(is_training_staff)
@@ -274,33 +330,47 @@ def generate_nomination_list(training, criteria, user):
 @login_required
 @user_passes_test(is_training_staff)
 def review_nomination(request, nomination_id):
-    nomination = get_object_or_404(TrainingNomination, id=nomination_id, created_by=request.user)
-    
-    # Allow editing for both draft and submitted status (before approval)
-    if nomination.status not in ['draft', 'submitted']:
-        messages.error(request, 'You can only edit nominations that are in draft or submitted status.')
-        return redirect('dashboard')
-    
-    if request.method == 'POST' and 'submit_approval' in request.POST:
-        nomination.status = 'submitted'
-        nomination.save()
+    try:
+        print(f"Loading nomination {nomination_id} for user {request.user}")
         
-        # Log the submission
-        log_nomination_action(
-            nomination, 
-            request.user, 
-            'updated', 
-            'Nomination submitted for approval',
-            request
-        )
+        nomination = get_object_or_404(TrainingNomination, id=nomination_id, created_by=request.user)
         
-        messages.success(request, 'Nomination submitted for approval!')
+        # Allow editing for both draft and submitted status (before approval)
+        if nomination.status not in ['draft', 'submitted']:
+            messages.error(request, 'You can only edit nominations that are in draft or submitted status.')
+            return redirect('dashboard')
+        
+        print(f"Nomination found: {nomination.training.title}")
+        print(f"Staff count: {nomination.selected_staff.count()}")
+        
+        if request.method == 'POST' and 'submit_approval' in request.POST:
+            nomination.status = 'submitted'
+            nomination.save()
+            
+            # Log the submission
+            log_nomination_action(
+                nomination, 
+                request.user, 
+                'updated', 
+                'Nomination submitted for approval',
+                request
+            )
+            
+            messages.success(request, 'Nomination submitted for approval!')
+            return redirect('dashboard')
+        
+        return render(request, 'training/review_nomination.html', {
+            'nomination': nomination
+        })
+        
+    except Exception as e:
+        print(f"Error in review_nomination: {e}")
+        import traceback
+        traceback.print_exc()
+        messages.error(request, f'Error loading nomination: {str(e)}')
         return redirect('dashboard')
-    
-    return render(request, 'training/review_nomination.html', {
-        'nomination': nomination
-    })
-    
+
+
 # New view for admin officers to review and edit nominations
 @login_required
 @user_passes_test(is_admin)
@@ -348,12 +418,45 @@ def admin_review_nomination(request, nomination_id):
         'nomination': nomination
     })
 
+
+
 @login_required
 @user_passes_test(is_admin)
 def approval_list(request):
     nominations = TrainingNomination.objects.filter(status='submitted')
     return render(request, 'training/approval_list.html', {
         'nominations': nominations
+    })
+
+@login_required
+@user_passes_test(lambda u: is_training_staff(u) or is_admin_officer(u))
+def edit_training(request, training_id):
+    """Edit an existing training program"""
+    training = get_object_or_404(TrainingProgram, id=training_id, created_by=request.user)
+    
+    # Check if training can be edited (only if no approved nominations exist)
+    approved_nominations = TrainingNomination.objects.filter(
+        training=training, 
+        status='approved'
+    ).exists()
+    
+    if approved_nominations:
+        messages.error(request, 'Cannot edit training program that has approved nominations.')
+        return redirect('dashboard')
+    
+    if request.method == 'POST':
+        form = TrainingProgramForm(request.POST, instance=training, request=request)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Training program updated successfully!')
+            return redirect('review_nomination', nomination_id=training.trainingnomination_set.first().id)
+    else:
+        form = TrainingProgramForm(instance=training, request=request)
+    
+    return render(request, 'training/edit_training.html', {
+        'form': form,
+        'training': training,
+        'has_nominations': training.trainingnomination_set.exists()
     })
 
 @login_required

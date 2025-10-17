@@ -76,11 +76,34 @@ class Staff(models.Model):
 
 class TrainingProgram(models.Model):
     title = models.CharField(max_length=300)
-    description = models.TextField()
+    training_coordinator = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE,
+        limit_choices_to={'userprofile__role': 'training_staff'},
+        related_name='coordinated_trainings',
+        null=True,  # Allow null initially
+        blank=True  # Allow blank initially
+    )
+    training_consultant = models.CharField(
+        max_length=200, 
+        blank=True,  # Allow blank initially
+        null=True,   # Allow null initially
+        help_text="Name of training consultant/facilitator"
+    )
+    consultant_info = models.TextField(
+        blank=True,  # Allow blank initially
+        null=True,   # Allow null initially
+        help_text="Consultant qualifications and experience"
+    )
+    remarks = models.TextField(
+        blank=True, 
+        default='',
+        help_text="Additional notes or special instructions"
+    )
     start_date = models.DateField()
     end_date = models.DateField()
     venue = models.CharField(max_length=200)
-    capacity = models.IntegerField()
+    capacity = models.IntegerField(default=25)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     
