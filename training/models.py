@@ -193,7 +193,7 @@ class UserProfile(models.Model):
     directorate = models.ForeignKey(Directorate, on_delete=models.SET_NULL, null=True, blank=True)  # Make optional
     
     def __str__(self):
-        return f"{self.user.username} - {self.role}"s
+        return f"{self.user.username} - {self.role}"
     
 class NominalRollUpload(models.Model):
     uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE)
