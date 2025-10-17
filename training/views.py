@@ -12,8 +12,165 @@ from .models import *
 from .forms import TrainingProgramForm, SelectionCriteriaForm, NominationApprovalForm, NominalRollUploadForm
 from .utils import is_training_staff, is_admin, log_nomination_action, get_client_ip
 from django.contrib.auth import logout
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
 import json
+from django.contrib.auth.models import User
+from .models import UserProfile, Directorate
+
+def is_admin(user):
+    return user.is_authenticated and hasattr(user, 'userprofile') and user.userprofile.role == 'admin'
+
+@login_required
+@user_passes_test(is_admin)
+def create_user(request):
+    if request.method == 'POST':
+        try:
+            email = request.POST.get('email')
+            password = request.POST.get('password')
+            role = request.POST.get('role')
+            
+            # Auto-generate username from email (characters before "@")
+            username = email.split('@')[0]
+            
+            # Check if user already exists
+            if User.objects.filter(username=username).exists():
+                # Add number suffix if username exists
+                counter = 1
+                new_username = f"{username}{counter}"
+                while User.objects.filter(username=new_username).exists():
+                    counter += 1
+                    new_username = f"{username}{counter}"
+                username = new_username
+            
+            # Create user
+            user = User.objects.create_user(
+                username=username,
+                password=password,
+                email=email,
+                first_name="",  # Empty first name
+                last_name=""    # Empty last name
+            )
+            
+            # Check if UserProfile already exists before creating
+            if not UserProfile.objects.filter(user=user).exists():
+                UserProfile.objects.create(
+                    user=user,
+                    role=role
+                    # directorate removed as requested
+                )
+            else:
+                # Update existing profile
+                profile = UserProfile.objects.get(user=user)
+                profile.role = role
+                profile.save()
+            
+            messages.success(request, f'Successfully created {role.replace("_", " ").title()}: {username}')
+            return redirect('user_management')
+            
+        except Exception as e:
+            messages.error(request, f'Error creating user: {str(e)}')
+    
+    return render(request, 'create_user.html')
+
+@login_required
+@user_passes_test(is_admin)
+def edit_user(request, user_id):
+    user = get_object_or_404(User, id=user_id)
+    user_profile = get_object_or_404(UserProfile, user=user)
+    
+    if request.method == 'POST':
+        try:
+            user.email = request.POST.get('email')
+            user.save()
+            
+            user_profile.role = request.POST.get('role')
+            user_profile.save()
+            
+            messages.success(request, f'User {user.username} updated successfully')
+            return redirect('user_management')
+        except Exception as e:
+            messages.error(request, f'Error updating user: {str(e)}')
+    
+    return render(request, 'edit_user.html', {
+        'user_obj': user,
+        'user_profile': user_profile
+    })
+
+@login_required
+@user_passes_test(is_admin)
+def delete_user(request, user_id):
+    user = get_object_or_404(User, id=user_id)
+    
+    if request.method == 'POST':
+        username = user.username
+        user.delete()
+        messages.success(request, f'User {username} deleted successfully')
+        return redirect('user_management')
+    
+    return render(request, 'delete_user.html', {'user_obj': user})
+
+@login_required
+def reset_own_password(request):
+    if request.method == 'POST':
+        try:
+            current_password = request.POST.get('current_password')
+            new_password = request.POST.get('new_password')
+            confirm_password = request.POST.get('confirm_password')
+            
+            # Verify current password
+            if not request.user.check_password(current_password):
+                messages.error(request, 'Current password is incorrect')
+            elif new_password != confirm_password:
+                messages.error(request, 'New passwords do not match')
+            elif len(new_password) < 8:
+                messages.error(request, 'Password must be at least 8 characters long')
+            else:
+                # Set new password
+                request.user.set_password(new_password)
+                request.user.save()
+                
+                # Update session to prevent logout
+                from django.contrib.auth import update_session_auth_hash
+                update_session_auth_hash(request, request.user)
+                
+                messages.success(request, 'Your password has been reset successfully')
+                return redirect('dashboard')
+                
+        except Exception as e:
+            messages.error(request, f'Error resetting password: {str(e)}')
+    
+    return render(request, 'reset_own_password.html')
+
+@login_required
+@user_passes_test(is_admin)
+def reset_user_password(request, user_id):
+    user = get_object_or_404(User, id=user_id)
+    
+    if request.method == 'POST':
+        try:
+            new_password = request.POST.get('new_password')
+            confirm_password = request.POST.get('confirm_password')
+            
+            if new_password != confirm_password:
+                messages.error(request, 'Passwords do not match')
+            elif len(new_password) < 8:
+                messages.error(request, 'Password must be at least 8 characters long')
+            else:
+                user.set_password(new_password)
+                user.save()
+                messages.success(request, f'Password for {user.username} has been reset successfully')
+                return redirect('user_management')
+                
+        except Exception as e:
+            messages.error(request, f'Error resetting password: {str(e)}')
+    
+    return render(request, 'reset_password.html', {'user_obj': user})
+
+@login_required
+@user_passes_test(is_admin)
+def user_management(request):
+    users = User.objects.filter(userprofile__isnull=False).select_related('userprofile')
+    return render(request, 'user_management.html', {'users': users})
 
 @csrf_exempt
 def search_staff(request):

@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-6 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h4>Create New User</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="email" class="form-label">NPA Email Address</label>
+                            <input type="email" class="form-control" id="email" name="email" required 
+                                   oninput="generateUsername()">
+                            {% comment %} <div class="form-text">Username will be auto-generated from email</div> {% endcomment %}
+                        </div>
+
+                        <!-- Add this new field to show generated username -->
+                        <div class="mb-3">
+                            {% comment %} <label class="form-label">Username</label> {% endcomment %}
+                            <div class="form-control" id="username-preview" style="background-color: #f8f9fa; font-family: monospace;">
+                                <span class="text-muted">Username</span>
+                            </div>
+                            {% comment %} <div class="form-text">This username will be automatically created</div> {% endcomment %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="password" name="password" required minlength="8">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="role" class="form-label">Role</label>
+                            <select class="form-select" id="role" name="role" required>
+                                <option value="">Select Role</option>
+                                <option value="training_staff">Training Staff</option>
+                                <option value="admin_officer">Admin Officer</option>
+                                <option value="admin">Administrator</option>
+                            </select>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">Create User</button>
+                            <a href="{% url 'user_management' %}" class="btn btn-secondary mt-2">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function generateUsername() {
+    const emailInput = document.getElementById('email');
+    const usernamePreview = document.getElementById('username-preview');
+    const email = emailInput.value.trim();
+    
+    if (email) {
+        // Extract username part (before @)
+        let username = email.split('@')[0];
+        
+        // Clean the username - remove any special characters except dots, hyphens, underscores
+        username = username.replace(/[^a-zA-Z0-9._-]/g, '');
+        
+        // Convert to lowercase
+        username = username.toLowerCase();
+        
+        if (username) {
+            usernamePreview.innerHTML = `<strong>${username}</strong>`;
+            usernamePreview.style.color = '#000';
+        } else {
+            usernamePreview.innerHTML = '<span class="text-muted">Invalid email format</span>';
+            usernamePreview.style.color = '';
+        }
+    } else {
+        usernamePreview.innerHTML = '<span class="text-muted">Username</span>';
+        usernamePreview.style.color = '';
+    }
+}
+
+// Also generate username when page loads if there's already text in the email field
+document.addEventListener('DOMContentLoaded', function() {
+    generateUsername();
+});
+</script>
+
+<style>
+#username-preview {
+    min-height: 38px;
+    display: flex;
+    align-items: center;
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    padding: 0.375rem 0.75rem;
+}
+</style>
+{% endblock %}

@@ -36,6 +36,7 @@
             <img src="{% static 'images/npa2.png' %}" alt="NPA Logo" height="30" class="d-inline-block align-text-top me-2">
             NPA Training AI
         </a>
+        
         <div class="navbar-nav ms-auto">
             <span class="navbar-text me-3" style="color: #000000 !important;">
                 Welcome, {{ user.username }}
@@ -64,6 +65,8 @@
                                 Dashboard
                             </a>
                         </li>
+                        
+
                         {% if user_profile.role == 'training_staff' %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'create_training' %}">
@@ -85,7 +88,20 @@
                                 {% endif %}
                             </a>
                         </li>
+                        
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'user_management' %}">
+                                <i class="fas fa-users me-1"></i>User Management
+                            </a>
+                        </li>
+        
                         {% endif %}
+                        <!-- Add this in your sidebar/navigation section -->
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'reset_own_password' %}">
+                                <i class="fas fa-key me-1"></i>Reset Password
+                            </a>
+                        </li>
                     </ul>
                 </div>
             </nav>

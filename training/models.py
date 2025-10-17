@@ -185,15 +185,15 @@ class UserProfile(models.Model):
     ROLE_CHOICES = [
         ('training_staff', 'Training Staff'),
         ('admin', 'Administrator'),
-        ('admin_officer', 'Admin Officer'),  # New role
+        ('admin_officer', 'Admin Officer'),
     ]
     
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
-    directorate = models.ForeignKey(Directorate, on_delete=models.SET_NULL, null=True, blank=True)
+    directorate = models.ForeignKey(Directorate, on_delete=models.SET_NULL, null=True, blank=True)  # Make optional
     
     def __str__(self):
-        return f"{self.user.username} - {self.role}"
+        return f"{self.user.username} - {self.role}"s
     
 class NominalRollUpload(models.Model):
     uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE)

@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-6 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h4>Delete User</h4>
+                </div>
+                <div class="card-body">
+                    <p>Are you sure you want to delete user <strong>{{ user_obj.username }}</strong>?</p>
+                    <p class="text-danger">This action cannot be undone. All data associated with this user will be permanently removed.</p>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-danger">Yes, Delete User</button>
+                            <a href="{% url 'user_management' %}" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
