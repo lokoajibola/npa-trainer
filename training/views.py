@@ -478,7 +478,16 @@ def generate_nomination_list(training, criteria, user):
     )
     
     # Add selected staff (limit to capacity)
-    selected_staff = staff_query[:training.capacity]
+    # selected_staff = staff_query[:training.capacity]
+
+    # # Pick staff at random
+    # import random
+    # selected_staff = random.sample(list(staff_query), training.capacity)
+
+    # Pick staff with least training + most service years
+    selected_staff = staff_query.order_by('training_count', 'date_joined')[:training.capacity]
+
+    
     for staff in selected_staff:
         NominationItem.objects.create(nomination=nomination, staff=staff)
     
